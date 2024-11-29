@@ -1,24 +1,35 @@
 import React, { useEffect, useState } from 'react';
+import api from '../services/api';
 
-const FileList = () => {
+const FileList = ({ onSelectFile }) => {
     const [files, setFiles] = useState([]);
 
     useEffect(() => {
-        // Lấy danh sách file từ Flask API
-        fetch('http://localhost:5000/files')
-            .then((res) => res.json())
-            .then((data) => setFiles(data.files || []))
-            .catch((err) => console.error('Error fetching files:', err));
+        const fetchFiles = async () => {
+            try {
+                const response = await api.get('/files');
+                setFiles(response.data.files);
+            } catch (error) {
+                console.error('Error fetching files:', error);
+            }
+        };
+        fetchFiles();
     }, []);
 
     return (
         <div className="file-list">
-            <h2>Uploaded Files</h2>
-            <ul>
-                {files.map((file, index) => (
-                    <li key={index}>{file}</li>
-                ))}
-            </ul>
+            <h3>Uploaded Files</h3>
+            {files.length > 0 ? (
+                <ul>
+                    {files.map((file) => (
+                        <li key={file.id} onClick={() => onSelectFile(file)}>
+                            {file.filename}
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p>No files available</p>
+            )}
         </div>
     );
 };
