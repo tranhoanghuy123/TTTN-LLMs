@@ -2,10 +2,30 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import pyodbc
 import jwt
+import openai
+from pytesseract import image_to_string
+from PIL import Image
 from functools import wraps
 from datetime import datetime, timedelta
 app = Flask(__name__,template_folder="templates")
 app.secret_key = 'supersecretkey'
+openai.api_key = "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"
+def extract_info_with_llm(text):
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=f"Extract the name, email, and phone number from this text: {text}",
+        max_tokens=100
+    )
+    return response.choices[0].text.strip()
+def extract_text_from_image(image_path):
+    """
+    Rút trích văn bản từ hình ảnh sử dụng Tesseract OCR.
+    """
+    try:
+        text = image_to_string(Image.open(image_path), lang='eng')  # Dùng ngôn ngữ English
+        return text
+    except Exception as e:
+        raise RuntimeError(f"Error processing image: {e}")
 # Hàm giải mã token
 def decode_token(token):
     try:
@@ -180,5 +200,24 @@ def download_file(user_id, file_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+@app.route('/extract/<int:file_id>', methods=['POST'])
+@token_required
+def extract_information(user_id, file_id):
+    cursor = get_db_connection().cursor()
+    cursor.execute(
+        "SELECT file_path FROM uploaded_files WHERE id = ? AND user_id = ?",
+        (file_id, user_id)
+    )
+    file_record = cursor.fetchone()
+    if not file_record:
+        return jsonify({"error": "File not found or access denied"}), 404
+
+    file_path = file_record[0]
+    extracted_text = extract_text_from_image(file_path)
+
+    # Gọi LLM để phân tích văn bản
+    extracted_info = extract_info_with_llm(extracted_text)
+
+    return jsonify({"extracted_info": extracted_info}), 200
 if __name__ == '__main__':
     app.run(debug=True)
