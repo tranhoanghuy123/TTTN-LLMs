@@ -1,25 +1,72 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Dashboard from './components/Dashboard';
-import UploadPage from './components/UploadPage';
-import FileList from './components/FileList';
-import Login from './components/Login';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Register from './components/Register';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import FileUpload from './components/FileUpload';
+import FileList from './components/FileList';
+import ExtractInfo from './components/ExtractInfo';
+import './App.css';
 
-function App() {
+const App = () => {
+    const [user, setUser] = useState(null); // Quản lý trạng thái người dùng
+    const [selectedFile, setSelectedFile] = useState(null); // Quản lý trạng thái file được chọn
+
+    const handleLogin = (userData) => {
+        setUser(userData);
+        localStorage.setItem('token', userData.token);
+    };
+
+    const handleLogout = () => {
+        setUser(null);
+        localStorage.removeItem('token');
+    };
+
     return (
         <Router>
-            <Navbar />
-            <Routes>
-                <Route path="/" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/upload" element={<UploadPage />} />
-                <Route path="/files" element={<FileList />} />
-            </Routes>
+            <div className="app">
+                <h1>Document Information Extraction</h1>
+                <Routes>
+                    {/* Route Đăng ký */}
+                    <Route path="/register" element={<Register />} />
+                    
+                    {/* Route Đăng nhập */}
+                    <Route
+                        path="/login"
+                        element={
+                            user ? (
+                                <Navigate to="/dashboard" />
+                            ) : (
+                                <Login onLogin={handleLogin} />
+                            )
+                        }
+                    />
+                    
+                    {/* Route Dashboard */}
+                    <Route
+                        path="/dashboard"
+                        element={
+                            user ? (
+                                <Dashboard onLogout={handleLogout}>
+                                    {/* Dashboard hiển thị các tính năng */}
+                                    <div className="dashboard-container">
+                                        <FileUpload />
+                                        <FileList onSelectFile={(file) => setSelectedFile(file)} />
+                                        <ExtractInfo selectedFile={selectedFile} />
+                                    </div>
+                                </Dashboard>
+                            ) : (
+                                <Navigate to="/login" />
+                            )
+                        }
+                    />
+                    
+                    {/* Redirect về Login nếu không có route phù hợp */}
+                    <Route path="*" element={<Navigate to="/login" />} />
+                </Routes>
+            </div>
         </Router>
     );
-}
+};
 
 export default App;
