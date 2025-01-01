@@ -1,37 +1,84 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<h2>Chào mừng, bạn đã đăng nhập thành công!</h2>
-<div id="container">
-    <h1>Web Trích Xuất Thông Tin Từ File Scan Được Tải Lên </h1>
-    <div class="upload-section">
-      <p>Chỉ tải tối đa 10 file cùng lúc</p>
-      <form id="upload-form" method="POST" enctype="multipart/form-data">
-        <input type="file" name="files[]" id="file-input" multiple>
-        <input type="submit" value="Upload">
-      </form>
+<section></section>
+<h2>Chào mừng, {{username}} đã đăng nhập thành công!</h2>
+</head>
+<body>
+  <div class="container">
+    <h1>Upload Files</h1>
+    <div class="upload-container" id="uploadContainer">
+      <p>Drag & drop your files here or <span style="color: #007bff; text-decoration: underline; cursor: pointer;" id="uploadText">click to upload</span></p>
+      <input type="file" id="fileInput" multiple>
+      <ul class="file-list" id="fileList"></ul>
     </div>
+    <button class="upload-button" id="uploadButton">Upload Files</button>
     <div class="result-section">
+      <h3>Result:</h3>
       <pre id="result"></pre>
     </div>
   </div>
-
   <script>
-    // AJAX request to upload files and process them
-    var form = document.getElementById("upload-form");
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-      var formData = new FormData(form);
-      var xhr = new XMLHttpRequest();
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          var result = JSON.parse(xhr.responseText);
-          var resultString = JSON.stringify(result, null, 2);
-          document.getElementById("result").textContent = resultString;
+    const uploadContainer = document.getElementById('uploadContainer');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const uploadButton = document.getElementById('uploadButton');
+    const resultDisplay = document.getElementById('result');
+    const uploadText = document.getElementById('uploadText');
+
+    const filesToUpload = [];
+
+    uploadContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadContainer.classList.add('dragover');
+    });
+
+    uploadContainer.addEventListener('dragleave', () => {
+      uploadContainer.classList.remove('dragover');
+    });
+
+    uploadContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadContainer.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      addFiles(files);
+    });
+
+    uploadText.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      addFiles(files);
+    });
+
+    function addFiles(files) {
+      Array.from(files).forEach(file => {
+        if (!filesToUpload.some(f => f.name === file.name)) {
+          filesToUpload.push(file);
+          const listItem = document.createElement('li');
+          listItem.textContent = `${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+          fileList.appendChild(listItem);
         }
-      };
-      xhr.open("POST", "/upload");
-      xhr.send(formData);
+      });
+    }
+
+    uploadButton.addEventListener('click', () => {
+      const formData = new FormData();
+      filesToUpload.forEach(file => formData.append('files[]', file));
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      })
+        .then(response => response.json())
+        .then(data => {
+          resultDisplay.textContent = JSON.stringify(data, null, 2);
+        })
+        .catch(error => {
+          resultDisplay.textContent = `Error: ${error.message}`;
+        });
     });
   </script>
 {% endblock %}
